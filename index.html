@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Test2</title>
+
+    <style>
+      html,
+      head,
+      body {
+        margin: 0;
+        padding: 25px;
+        background-color: #2a2a2a;
+      }
+
+      #error-box {
+        color: #fd8080;
+        font-weight: 500;
+        font-size: 18pt;
+        border: 1px solid white;
+        padding: 25px;
+        margin-top: 20px;
+      }
+
+      .error-box-title {
+        color: #eee;
+        border-bottom: 1px solid gray;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" width="800px" height="200px">
+      HTML5 canvas not supported in your browser! These demos will not work.
+    </canvas>
+    <canvas id="graphCanvas" width="800px" height="200px">
+      HTML5 canvas not supported in your browser! These demos will not work.
+    </canvas>
+    <div>fps: <span id="fps"></span></div>
+    <div id="error-box">
+      <span class="error-box-title">Error messages, if any, go in here.</span>
+    </div>
+    <script src="https://webgl2fundamentals.org/webgl/resources/m4.js"></script>
+    <script src="fontInfo.js"></script>
+    <script src="util.js"></script>
+    <script src="scripts.js"></script>
+  </body>
+</html>
