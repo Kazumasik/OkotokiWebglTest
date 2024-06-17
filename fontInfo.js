@@ -1,4 +1,4 @@
-const fontInfo = {
+export const fontInfo = {
     letterHeight: 53,
     spaceWidth: 32,
     spacing: -5,

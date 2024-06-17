@@ -1,4 +1,4 @@
-class WebGLUtils {
+export class WebGLUtils {
 
   getGLContext = (canvas) => {
     const gl = canvas.getContext("webgl2");

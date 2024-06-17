@@ -1,3 +1,5 @@
+import { WebGLUtils } from "./util.js";
+import { fontInfo } from "./fontInfo.js";
 "use strict";
 
 const vertexShaderSource = `#version 300 es
