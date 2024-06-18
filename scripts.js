@@ -93,15 +93,6 @@ const texcoordAttributeLocation = gl.getAttribLocation(
   textProgram,
   "textProgram"
 );
-webGLUtils.linkGPUAndCPU(
-  {
-    program: textProgram,
-    gpuVariable: "textProgram",
-    buffer: positionBuffer,
-    dims: 2,
-  },
-  gl
-);
 const texcoordBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
 gl.enableVertexAttribArray(texcoordAttributeLocation);
