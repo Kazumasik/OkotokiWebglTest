@@ -1,5 +1,5 @@
-import { fontInfo } from "./fontInfo";
-import { WebGLUtils } from "./util";
+import { fontInfo } from "./fontInfo.js";
+import { WebGLUtils } from "./util.js";
 
 const vertexShaderSource = `#version 300 es
 precision mediump float;
