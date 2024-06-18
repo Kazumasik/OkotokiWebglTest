@@ -49,21 +49,6 @@ export class WebGLUtils {
     return texture;
   };
 
-  createAndBindFramebuffer = (gl, image) => {
-    var texture = this.createAndBindTexture(gl, image);
-    var framebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT0,
-      gl.TEXTURE_2D,
-      texture,
-      0
-    );
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    return { fb: framebuffer, tex: texture };
-  };
-
   linkGPUAndCPU = (obj, gl) => {
     var position = gl.getAttribLocation(obj.program, obj.gpuVariable);
     gl.enableVertexAttribArray(position);
@@ -79,100 +64,6 @@ export class WebGLUtils {
     return position;
   };
 
-  //-1.0 -> 1.0 -> 0.0->1.0
-  //0.0->1.0 -> 0.0->2.0
-  //1.0 -> -1.0->1.0
-  getGPUCoords = (obj) => {
-    return {
-      startX: -1.0 + (obj.startX / gl.canvas.width) * 2,
-      startY: -1.0 + (obj.startY / gl.canvas.height) * 2,
-      endX: -1.0 + (obj.endX / gl.canvas.width) * 2,
-      endY: -1.0 + (obj.endY / gl.canvas.height) * 2,
-    };
-  };
-
-  //Input -> -1.0 -> 1.0
-  //Output -> 0.0 -> 2.0
-  getGPUCoords0To2 = (obj) => {
-    return {
-      startX: 1.0 + obj.startX,
-      startY: 1.0 + obj.startY,
-      endX: 1.0 + obj.endX,
-      endY: 1.0 + obj.endY,
-    };
-  };
-
-  getTextureColor = (obj) => {
-    return {
-      red: obj.startX / gl.canvas.width,
-      green: obj.startY / gl.canvas.height,
-      blue: obj.endX / gl.canvas.width,
-      alpha: obj.endY / gl.canvas.height,
-    };
-  };
-
-  getCircleCoordinates = (centerX, centerY, radiusX, numOfPoints, isLine) => {
-    var circleCoords = [];
-    var radiusY = (radiusX / gl.canvas.height) * gl.canvas.width;
-    for (var i = 0; i < numOfPoints; i++) {
-      //2*Math.PI*r
-      var circumference = 2 * Math.PI * (i / numOfPoints);
-      var x = centerX + radiusX * Math.cos(circumference);
-      var y = centerY + radiusY * Math.sin(circumference);
-      if (isLine) {
-        circleCoords.push(centerX, centerY);
-      }
-      circleCoords.push(x, y);
-    }
-    return circleCoords;
-  };
-
-  prepareRectVec2 = (startX, startY, endX, endY) => {
-    return [
-      startX,
-      startY,
-      endX,
-      startY,
-      startX,
-      endY,
-      startX,
-      endY,
-      endX,
-      endY,
-      endX,
-      startY,
-    ];
-  };
-
-  getAspectRatio = (gl, img) => {
-    var cols = img.width;
-    var rows = img.height;
-    var imageAR = cols / rows;
-    var canvasAR = gl.canvas.width / gl.canvas.height;
-    var startX, startY, renderableW, renderableH;
-    if (imageAR < canvasAR) {
-      renderableH = gl.canvas.height;
-      renderableW = cols * (renderableH / rows);
-      startX = (gl.canvas.width - renderableW) / 2;
-      startY = 0;
-    } else if (imageAR > canvasAR) {
-      renderableW = gl.canvas.width;
-      renderableH = rows * (renderableW / cols);
-      startX = 0;
-      startY = (gl.canvas.height - renderableH) / 2;
-    } else {
-      startX = 0;
-      startY = 0;
-      renderableW = gl.canvas.width;
-      renderableH = gl.canvas.height;
-    }
-    return {
-      x1: startX,
-      y1: startY,
-      x2: startX + renderableW,
-      y2: startY + renderableH,
-    };
-  };
   generateLineCoords = (heights, lineWidth) => {
     const lineCoords = [];
     const xStep = 2.0 / (heights.length - 1);
@@ -339,7 +230,7 @@ export class WebGLUtils {
       },
       gl
     );
-    
+
     this.linkGPUAndCPU(
       {
         program: program,
@@ -358,7 +249,7 @@ export class WebGLUtils {
     for (let i = 1; i < count; i++) {
       const prevValue = result[i - 1];
       const changePercent = Math.random() * 0.01;
-      const changeDirection = Math.random() < 0.5 ? -1 : 1; 
+      const changeDirection = Math.random() < 0.5 ? -1 : 1;
       const changeAmount = prevValue * changePercent * changeDirection;
       const newValue = prevValue + changeAmount;
 
