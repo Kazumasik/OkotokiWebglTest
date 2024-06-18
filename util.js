@@ -330,23 +330,25 @@ export class WebGLUtils {
     gl.uniformMatrix4fv(matrixLocation, false, projectionMatrix);
     gl.uniform1i(textureLocation, 0);
 
-    // Настройка атрибутов позиции
-    const positionAttributeLocation = gl.getAttribLocation(
-      program,
-      "a_position"
+    this.linkGPUAndCPU(
+      {
+        program: program,
+        gpuVariable: "a_position",
+        buffer: positionBuffer,
+        dims: 2,
+      },
+      gl
     );
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(positionAttributeLocation);
-
-    // Настройка атрибутов текстурных координат
-    const texcoordAttributeLocation = gl.getAttribLocation(
-      program,
-      "a_texcoord"
+    
+    this.linkGPUAndCPU(
+      {
+        program: program,
+        gpuVariable: "a_texcoord",
+        buffer: texcoordBuffer,
+        dims: 2,
+      },
+      gl
     );
-    gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
-    gl.vertexAttribPointer(texcoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(texcoordAttributeLocation);
 
     gl.drawArrays(gl.TRIANGLES, 0, text.length * 6);
   };
@@ -356,7 +358,7 @@ export class WebGLUtils {
     for (let i = 1; i < count; i++) {
       const prevValue = result[i - 1];
       const changePercent = Math.random() * 0.01;
-      const changeDirection = Math.random() < 0.5 ? -1 : 1; // случайное направление (увеличение или уменьшение)
+      const changeDirection = Math.random() < 0.5 ? -1 : 1; 
       const changeAmount = prevValue * changePercent * changeDirection;
       const newValue = prevValue + changeAmount;
 
