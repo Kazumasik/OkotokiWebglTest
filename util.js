@@ -1,12 +1,4 @@
 export class WebGLUtils {
-  getGLContext = (canvas) => {
-    var gl = canvas.getContext("webgl2");
-    //0.0 -> 1.0
-    gl.clearColor(1.0, 1.0, 1.0, 1.0);
-    gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
-    return gl;
-  };
-
   getShader = (gl, shaderSource, shaderType) => {
     var shader = gl.createShader(shaderType);
     gl.shaderSource(shader, shaderSource);

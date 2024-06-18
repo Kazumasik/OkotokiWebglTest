@@ -72,30 +72,46 @@ const uCanvasSizeLocation = gl.getUniformLocation(priceProgram, "uCanvasSize");
 gl.useProgram(priceProgram);
 gl.uniform2f(uCanvasSizeLocation, canvas.width, canvas.height);
 
-const vertexPositionLocation = gl.getAttribLocation(priceProgram, "vertexPosition");
-const linePositionLocation = gl.getAttribLocation(lineProgram, "vertexPosition");
+const vertexPositionLocation = gl.getAttribLocation(
+  priceProgram,
+  "vertexPosition"
+);
+const linePositionLocation = gl.getAttribLocation(
+  lineProgram,
+  "vertexPosition"
+);
 
-const positionAttributeLocation = gl.getAttribLocation(textProgram, "a_position");
-const texcoordAttributeLocation = gl.getAttribLocation(textProgram, "a_texcoord");
+const positionAttributeLocation = gl.getAttribLocation(
+  textProgram,
+  "a_position"
+);
+const positionBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+gl.enableVertexAttribArray(positionAttributeLocation);
+gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+const texcoordAttributeLocation = gl.getAttribLocation(
+  textProgram,
+  "textProgram"
+);
+webGLUtils.linkGPUAndCPU(
+  {
+    program: textProgram,
+    gpuVariable: "textProgram",
+    buffer: positionBuffer,
+    dims: 2,
+  },
+  gl
+);
+const texcoordBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
+gl.enableVertexAttribArray(texcoordAttributeLocation);
+gl.vertexAttribPointer(texcoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
 const matrixLocation = gl.getUniformLocation(textProgram, "u_matrix");
 const textureLocation = gl.getUniformLocation(textProgram, "u_texture");
 
 const vao = gl.createVertexArray();
 gl.bindVertexArray(vao);
-
-const positionBuffer = gl.createBuffer();
-const texcoordBuffer = gl.createBuffer();
-
-const triangleBuffer = gl.createBuffer();
-const lineBuffer = gl.createBuffer();
-
-gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-gl.enableVertexAttribArray(positionAttributeLocation);
-gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
-
-gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
-gl.enableVertexAttribArray(texcoordAttributeLocation);
-gl.vertexAttribPointer(texcoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
 
 const texture = gl.createTexture();
 gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -109,14 +125,33 @@ image.src = "font.png";
 image.onload = () => {
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+  cryptoPrices = webGLUtils.updateArray(cryptoPrices);
+  drawCryptoLabel("binance/BNBUSDC");
+  drawCryptoPrice(
+    cryptoPrices[cryptoPrices.length - 1],
+    cryptoPrices[cryptoPrices.length - 2]
+  );
+
+  const [triangleVertices, extendedPrices] =
+    webGLUtils.generateTriangleCoords(cryptoPrices);
+  const lineVertices = webGLUtils.generateLineCoords(
+    extendedPrices,
+    8 / canvas.height
+  );
+  drawGraph(triangleVertices, lineVertices);
 };
 
 function drawCryptoLabel(cryptoLabel) {
   const scale = 0.6;
-  const textWidth = cryptoLabel.split("").reduce((sum, letter) => {
-    const glyphInfo = fontInfo.glyphInfos[letter];
-    return sum + (glyphInfo ? glyphInfo.width + fontInfo.spacing : 0);
-  }, 0) * scale;
+  const textWidth =
+    cryptoLabel.split("").reduce((sum, letter) => {
+      const glyphInfo = fontInfo.glyphInfos[letter];
+      return sum + (glyphInfo ? glyphInfo.width + fontInfo.spacing : 0);
+    }, 0) * scale;
 
   const textHeight = fontInfo.letterHeight * scale;
   const x = (canvas.width - textWidth) / 2;
@@ -146,10 +181,11 @@ function drawCryptoPrice(price, prevPrice) {
     priceText += "🠃";
   }
 
-  const priceTextWidth = priceText.split("").reduce((sum, letter) => {
-    const glyphInfo = fontInfo.glyphInfos[letter];
-    return sum + (glyphInfo ? glyphInfo.width + fontInfo.spacing : 0);
-  }, 0) * scale;
+  const priceTextWidth =
+    priceText.split("").reduce((sum, letter) => {
+      const glyphInfo = fontInfo.glyphInfos[letter];
+      return sum + (glyphInfo ? glyphInfo.width + fontInfo.spacing : 0);
+    }, 0) * scale;
 
   const x = (canvas.width - priceTextWidth) / 2 - 25;
   const y = (canvas.height - fontInfo.letterHeight * scale) / 2 - 80;
@@ -171,16 +207,25 @@ function drawCryptoPrice(price, prevPrice) {
 
 function drawGraph(triangleVertices, lineVertices) {
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height / 2.3);
-
+  const triangleBuffer = gl.createBuffer();
+  const lineBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, triangleBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertices), gl.STATIC_DRAW);
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Float32Array(triangleVertices),
+    gl.STATIC_DRAW
+  );
   gl.vertexAttribPointer(vertexPositionLocation, 2, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(vertexPositionLocation);
   gl.useProgram(priceProgram);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, triangleVertices.length / 2);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineVertices), gl.STATIC_DRAW);
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Float32Array(lineVertices),
+    gl.STATIC_DRAW
+  );
   gl.vertexAttribPointer(linePositionLocation, 2, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(linePositionLocation);
   gl.useProgram(lineProgram);
@@ -202,8 +247,12 @@ function animateGraph() {
       cryptoPrices[cryptoPrices.length - 2]
     );
 
-    const [triangleVertices, extendedPrices] = webGLUtils.generateTriangleCoords(cryptoPrices);
-    const lineVertices = webGLUtils.generateLineCoords(extendedPrices, 8 / canvas.height);
+    const [triangleVertices, extendedPrices] =
+      webGLUtils.generateTriangleCoords(cryptoPrices);
+    const lineVertices = webGLUtils.generateLineCoords(
+      extendedPrices,
+      8 / canvas.height
+    );
     drawGraph(triangleVertices, lineVertices);
 
     requestAnimationFrame(animateGraph);
