@@ -1,9 +1,8 @@
 export class WebGLUtils {
-
   getGLContext = (canvas) => {
-    const gl = canvas.getContext("webgl2");
+    var gl = canvas.getContext("webgl2");
     //0.0 -> 1.0
-    gl.clearColor(1.0, 0.0, 1.0, 1.0);
+    gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
     return gl;
   };
@@ -27,8 +26,6 @@ export class WebGLUtils {
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
       console.error(gl.getProgramInfoLog(program));
-      gl.deleteProgram(program);
-      return null;
     }
     return program;
   };
@@ -37,7 +34,6 @@ export class WebGLUtils {
     var buffer = gl.createBuffer();
     gl.bindBuffer(bufferType, buffer);
     gl.bufferData(bufferType, data, typeOfDrawing);
-    gl.bindBuffer(bufferType, null);
     return buffer;
   };
 
@@ -68,7 +64,7 @@ export class WebGLUtils {
     return { fb: framebuffer, tex: texture };
   };
 
-  linkGPUAndCPU = (gl, obj) => {
+  linkGPUAndCPU = (obj, gl) => {
     var position = gl.getAttribLocation(obj.program, obj.gpuVariable);
     gl.enableVertexAttribArray(position);
     gl.bindBuffer(obj.channel || gl.ARRAY_BUFFER, obj.buffer);
@@ -177,6 +173,72 @@ export class WebGLUtils {
       y2: startY + renderableH,
     };
   };
+  generateLineCoords = (heights, lineWidth) => {
+    const lineCoords = [];
+    const xStep = 2.0 / (heights.length - 1);
+    const halfWidth = lineWidth / 2;
+    const minHeight = Math.min(...heights);
+    const maxHeight = Math.max(...heights);
+
+    for (let i = 0; i < heights.length - 1; i++) {
+      const x1 = -1.0 + i * xStep;
+      const y1 = ((heights[i] - minHeight) / (maxHeight - minHeight)) * 2 - 1;
+      const x2 = x1 + xStep;
+      const y2 =
+        ((heights[i + 1] - minHeight) / (maxHeight - minHeight)) * 2 - 1;
+
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const sin = Math.sin(angle) * halfWidth;
+      const cos = Math.cos(angle) * halfWidth;
+
+      lineCoords.push(x1 - sin, y1 + cos);
+      lineCoords.push(x1 + sin, y1 - cos);
+      lineCoords.push(x2 - sin, y2 + cos);
+      lineCoords.push(x2 + sin, y2 - cos);
+    }
+
+    return lineCoords;
+  };
+  generateTriangleCoords = (heights, smoothCorners = false) => {
+    let extendedHeights = [];
+
+    if (smoothCorners) {
+      for (let i = 0; i < heights.length - 1; i++) {
+        let currentHeight = heights[i];
+        let nextHeight = heights[i + 1];
+        let middleHeight = nextHeight - currentHeight;
+
+        middleHeight =
+          nextHeight > currentHeight
+            ? middleHeight * 0.7
+            : middleHeight - middleHeight * 0.7;
+
+        extendedHeights.push(currentHeight);
+        extendedHeights.push(middleHeight + currentHeight);
+      }
+      extendedHeights.push(heights[heights.length - 1]);
+    } else {
+      extendedHeights = heights;
+    }
+
+    const minHeight = Math.min(...extendedHeights);
+    const maxHeight = Math.max(...extendedHeights);
+    const normalizedHeights = extendedHeights.map(
+      (height) => ((height - minHeight) / (maxHeight - minHeight)) * 2 - 1
+    );
+
+    const triangleCoords = [];
+    let xCoord = -1.0;
+    const xStep = 2.0 / (normalizedHeights.length - 1);
+
+    for (let i = 0; i < normalizedHeights.length; i++) {
+      triangleCoords.push(xCoord, -1.0);
+      triangleCoords.push(xCoord, normalizedHeights[i]);
+      xCoord += xStep;
+    }
+
+    return [triangleCoords, extendedHeights];
+  };
   orthographic = (left, right, bottom, top, near, far, dst) => {
     dst = dst || new Float32Array(16);
 
@@ -198,8 +260,20 @@ export class WebGLUtils {
     dst[15] = 1;
 
     return dst;
-  }
-  drawText = (gl, program, fontInfo, text, x, y, scale, positionBuffer, texcoordBuffer, matrixLocation, textureLocation) => {
+  };
+  drawText = (
+    gl,
+    program,
+    fontInfo,
+    text,
+    x,
+    y,
+    scale,
+    positionBuffer,
+    texcoordBuffer,
+    matrixLocation,
+    textureLocation
+  ) => {
     const positions = [];
     const texcoords = [];
     let offsetX = x;
@@ -211,14 +285,25 @@ export class WebGLUtils {
         const y2 = y + fontInfo.letterHeight * scale;
 
         positions.push(
-          offsetX, y, x2, y, offsetX, y2,
-          offsetX, y2, x2, y, x2, y2
+          offsetX,
+          y,
+          x2,
+          y,
+          offsetX,
+          y2,
+          offsetX,
+          y2,
+          x2,
+          y,
+          x2,
+          y2
         );
 
         const u1 = glyphInfo.x / fontInfo.textureWidth;
         const v1 = glyphInfo.y / fontInfo.textureHeight;
         const u2 = (glyphInfo.x + glyphInfo.width) / fontInfo.textureWidth;
-        const v2 = (glyphInfo.y + fontInfo.letterHeight) / fontInfo.textureHeight;
+        const v2 =
+          (glyphInfo.y + fontInfo.letterHeight) / fontInfo.textureHeight;
 
         texcoords.push(u1, v1, u2, v1, u1, v2, u1, v2, u2, v1, u2, v2);
 
@@ -234,11 +319,65 @@ export class WebGLUtils {
 
     gl.useProgram(program);
 
-    const projectionMatrix = this.orthographic(0, gl.canvas.width, gl.canvas.height, 0, -1, 1);
+    const projectionMatrix = this.orthographic(
+      0,
+      gl.canvas.width,
+      gl.canvas.height,
+      0,
+      -1,
+      1
+    );
     gl.uniformMatrix4fv(matrixLocation, false, projectionMatrix);
     gl.uniform1i(textureLocation, 0);
 
-    gl.drawArrays(gl.TRIANGLES, 0, text.length * 6);
-  }
+    // Настройка атрибутов позиции
+    const positionAttributeLocation = gl.getAttribLocation(
+      program,
+      "a_position"
+    );
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(positionAttributeLocation);
 
+    // Настройка атрибутов текстурных координат
+    const texcoordAttributeLocation = gl.getAttribLocation(
+      program,
+      "a_texcoord"
+    );
+    gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
+    gl.vertexAttribPointer(texcoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(texcoordAttributeLocation);
+
+    gl.drawArrays(gl.TRIANGLES, 0, text.length * 6);
+  };
+  generateRandomArray = (startValue, count) => {
+    const result = [startValue];
+
+    for (let i = 1; i < count; i++) {
+      const prevValue = result[i - 1];
+      const changePercent = Math.random() * 0.01;
+      const changeDirection = Math.random() < 0.5 ? -1 : 1; // случайное направление (увеличение или уменьшение)
+      const changeAmount = prevValue * changePercent * changeDirection;
+      const newValue = prevValue + changeAmount;
+
+      result.push(newValue);
+    }
+
+    return result;
+  };
+  updateArray = (arr) => {
+    const newArray = [];
+    for (let i = 1; i < arr.length; i++) {
+      newArray.push(arr[i]);
+    }
+
+    const prevValue = arr[arr.length - 1];
+    const changePercent = Math.random() * 0.01;
+    const changeDirection = Math.random() < 0.5 ? -1 : 1;
+    const changeAmount = prevValue * changePercent * changeDirection;
+    const newValue = +(prevValue + changeAmount).toFixed(2);
+
+    newArray.push(newValue);
+    return newArray;
+  };
 }

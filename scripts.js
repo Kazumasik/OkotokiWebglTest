@@ -1,336 +1,226 @@
-import { WebGLUtils } from "./util.js";
-import { fontInfo } from "./fontInfo.js";
-"use strict";
+import { fontInfo } from "./fontInfo";
+import { WebGLUtils } from "./util";
 
 const vertexShaderSource = `#version 300 es
+precision mediump float;
+in vec2 vertexPosition;
+void main () {
+  gl_Position = vec4(vertexPosition, 0.0, 1.0);
+}`;
+
+const fragmentShaderSource = `#version 300 es
+precision highp float;
+uniform vec2 uCanvasSize;
+out vec4 fragColor;
+void main() {
+  float alpha = gl_FragCoord.y / uCanvasSize.y;
+  fragColor = vec4(0.671, 0.125, 0.204, alpha);
+}`;
+
+const lineFragmentShaderSource = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+void main() {
+  fragColor = vec4(0.925, 0.176, 0.361, 1.0);
+}`;
+
+const textVertexShader = `#version 300 es
 in vec4 a_position;
 in vec2 a_texcoord;
 uniform mat4 u_matrix;
 out vec2 v_texcoord;
-
 void main() {
   gl_Position = u_matrix * a_position;
   v_texcoord = a_texcoord;
 }`;
 
-const fragmentShaderSource = `#version 300 es
+const textFragmentShader = `#version 300 es
 precision mediump float;
 in vec2 v_texcoord;
 uniform sampler2D u_texture;
 out vec4 outColor;
-
 void main() {
   outColor = texture(u_texture, v_texcoord);
 }`;
 
-const utils = new WebGLUtils();
-function main() {
-  const canvas = document.getElementById("canvas");
-  const gl = canvas.getContext("webgl2");
+const webGLUtils = new WebGLUtils();
+const canvas = document.getElementById("canvas");
+const gl = canvas.getContext("webgl2");
 
-  if (!gl) {
-    console.error("WebGL2 not supported");
-    return;
-  }
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-  const utils = new WebGLUtils(gl);
-  const program = utils.getProgram(gl, vertexShaderSource, fragmentShaderSource);
+let cryptoPrices = webGLUtils.generateRandomArray(500, 100);
 
-  const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
-  const texcoordAttributeLocation = gl.getAttribLocation(program, "a_texcoord");
-  const matrixLocation = gl.getUniformLocation(program, "u_matrix");
-  const textureLocation = gl.getUniformLocation(program, "u_texture");
+const priceProgram = webGLUtils.getProgram(
+  gl,
+  vertexShaderSource,
+  fragmentShaderSource
+);
+const lineProgram = webGLUtils.getProgram(
+  gl,
+  vertexShaderSource,
+  lineFragmentShaderSource
+);
+const textProgram = webGLUtils.getProgram(
+  gl,
+  textVertexShader,
+  textFragmentShader
+);
 
-  const vao = gl.createVertexArray();
-  gl.bindVertexArray(vao);
+const uCanvasSizeLocation = gl.getUniformLocation(priceProgram, "uCanvasSize");
+gl.useProgram(priceProgram);
+gl.uniform2f(uCanvasSizeLocation, canvas.width, canvas.height);
 
-  const positionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  gl.enableVertexAttribArray(positionAttributeLocation);
-  gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+const vertexPositionLocation = gl.getAttribLocation(priceProgram, "vertexPosition");
+const linePositionLocation = gl.getAttribLocation(lineProgram, "vertexPosition");
 
-  const texcoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
-  gl.enableVertexAttribArray(texcoordAttributeLocation);
-  gl.vertexAttribPointer(texcoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+const positionAttributeLocation = gl.getAttribLocation(textProgram, "a_position");
+const texcoordAttributeLocation = gl.getAttribLocation(textProgram, "a_texcoord");
+const matrixLocation = gl.getUniformLocation(textProgram, "u_matrix");
+const textureLocation = gl.getUniformLocation(textProgram, "u_texture");
 
-  const texture = gl.createTexture();
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+
+const positionBuffer = gl.createBuffer();
+const texcoordBuffer = gl.createBuffer();
+
+const triangleBuffer = gl.createBuffer();
+const lineBuffer = gl.createBuffer();
+
+gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+gl.enableVertexAttribArray(positionAttributeLocation);
+gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
+gl.enableVertexAttribArray(texcoordAttributeLocation);
+gl.vertexAttribPointer(texcoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+const texture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+const image = new Image();
+image.src = "font.png";
+image.onload = () => {
   gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  const image = new Image();
-  image.src = "imgs/font.png";
-  image.onload = () => {
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    drawScene();
-    setInterval(drawScene, 300);
-  };
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+};
 
-  const cryptoLabel = "Binance/BNBUSDC";
+function drawCryptoLabel(cryptoLabel) {
+  const scale = 0.6;
+  const textWidth = cryptoLabel.split("").reduce((sum, letter) => {
+    const glyphInfo = fontInfo.glyphInfos[letter];
+    return sum + (glyphInfo ? glyphInfo.width + fontInfo.spacing : 0);
+  }, 0) * scale;
 
-  function getRandomPrice() {
-    return (Math.random() * (500 - 300) + 300).toFixed(2);
+  const textHeight = fontInfo.letterHeight * scale;
+  const x = (canvas.width - textWidth) / 2;
+  const y = (canvas.height - textHeight) / 2 - 30;
+
+  webGLUtils.drawText(
+    gl,
+    textProgram,
+    fontInfo,
+    cryptoLabel,
+    x,
+    y,
+    scale,
+    positionBuffer,
+    texcoordBuffer,
+    matrixLocation,
+    textureLocation
+  );
+}
+
+function drawCryptoPrice(price, prevPrice) {
+  const scale = 1.3;
+  let priceText = `$` + price.toFixed(2);
+  if (prevPrice < price) {
+    priceText += "🠁";
+  } else {
+    priceText += "🠃";
   }
 
-  function drawCryptoLabel() {
-    const scale = 0.8;
-    const textWidth = cryptoLabel.split("").reduce((sum, letter) => {
-      const glyphInfo = fontInfo.glyphInfos[letter];
-      return sum + (glyphInfo ? glyphInfo.width + fontInfo.spacing : 0);
-    }, 0) * scale;
+  const priceTextWidth = priceText.split("").reduce((sum, letter) => {
+    const glyphInfo = fontInfo.glyphInfos[letter];
+    return sum + (glyphInfo ? glyphInfo.width + fontInfo.spacing : 0);
+  }, 0) * scale;
 
-    const textHeight = fontInfo.letterHeight * scale;
-    const x = (canvas.width - textWidth) / 2;
-    const y = canvas.height - textHeight;
+  const x = (canvas.width - priceTextWidth) / 2 - 25;
+  const y = (canvas.height - fontInfo.letterHeight * scale) / 2 - 80;
 
-    utils.drawText(gl, program, fontInfo, cryptoLabel, x, y, scale, positionBuffer, texcoordBuffer, matrixLocation, textureLocation);
+  webGLUtils.drawText(
+    gl,
+    textProgram,
+    fontInfo,
+    priceText,
+    x,
+    y,
+    scale,
+    positionBuffer,
+    texcoordBuffer,
+    matrixLocation,
+    textureLocation
+  );
+}
+
+function drawGraph(triangleVertices, lineVertices) {
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height / 2.3);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, triangleBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertices), gl.STATIC_DRAW);
+  gl.vertexAttribPointer(vertexPositionLocation, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(vertexPositionLocation);
+  gl.useProgram(priceProgram);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, triangleVertices.length / 2);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineVertices), gl.STATIC_DRAW);
+  gl.vertexAttribPointer(linePositionLocation, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(linePositionLocation);
+  gl.useProgram(lineProgram);
+  for (let i = 0; i < lineVertices.length / 8; i++) {
+    gl.drawArrays(gl.TRIANGLE_STRIP, i * 4, 4);
   }
+}
 
-  function drawCryptoPrice() {
-    const scale = 1.3;
-    const priceText = getRandomPrice();
-    const priceTextWidth = priceText.split("").reduce((sum, letter) => {
-      const glyphInfo = fontInfo.glyphInfos[letter];
-      return sum + (glyphInfo ? glyphInfo.width + fontInfo.spacing : 0);
-    }, 0) * scale;
-    const x = (canvas.width - priceTextWidth) / 2;
-    const y = (canvas.height - fontInfo.letterHeight * scale)- 80;
-
-    utils.drawText(gl, program, fontInfo, priceText, x, y, scale, positionBuffer, texcoordBuffer, matrixLocation, textureLocation);
-  }
-
-  function drawScene() {
+function animateGraph() {
+  setTimeout(() => {
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    drawCryptoLabel();
-    drawCryptoPrice();
-  }
-}
-function graph() {
-  const vertexShader = `#version 300 es
-  precision mediump float;
-  in vec2 position;
-  void main () {
-      gl_Position = vec4(position, 0.0, 1.0);
-  }`;
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-  const fragmentShader = `#version 300 es
-  precision highp float;
-  uniform vec2 canvasSize;
-  out vec4 outColor;
-  void main() {
-      float alpha = gl_FragCoord.y / canvasSize.y;
-      outColor = vec4(0.671, 0.125, 0.204, alpha);
-  }`;
-
-  const lineFragmentShader = `#version 300 es
-  precision highp float;
-  out vec4 outColor;
-  void main() {
-      outColor = vec4(0.925, 0.176, 0.361, 1.0);
-  }`;
-  const canvas = document.getElementById("graphCanvas");
-  const gl = utils.getGLContext(canvas);
-
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-
-  let heights = [
-    43500
-  ];
-  let [triangleCoords, extendedHeights] = generateTriangleCoords(heights, true);
-  let lineCoords = generateLineCoords(extendedHeights, 8 / canvas.height);
-
-  const program = utils.getProgram(gl, vertexShader, fragmentShader);
-  const lineProgram = utils.getProgram(gl, vertexShader, lineFragmentShader);
-
-  let coordBuffer = utils.createAndBindBuffer(
-    gl,
-    gl.ARRAY_BUFFER,
-    gl.STATIC_DRAW,
-    new Float32Array(triangleCoords)
-  );
-  let lineBuffer = utils.createAndBindBuffer(
-    gl,
-    gl.ARRAY_BUFFER,
-    gl.STATIC_DRAW,
-    new Float32Array(lineCoords)
-  );
-
-  gl.useProgram(program);
-
-  const canvasSizeLocation = gl.getUniformLocation(program, "canvasSize");
-  gl.uniform2f(canvasSizeLocation, canvas.width, canvas.height);
-
-  const position = utils.linkGPUAndCPU(
-    gl,
-    {
-      program: program,
-      gpuVariable: "position",
-      buffer: coordBuffer,
-      dims: 2,
-    }
-  );
-
-  gl.useProgram(lineProgram);
-
-  const linePosition = utils.linkGPUAndCPU(
-    gl,
-    {
-      program: lineProgram,
-      gpuVariable: "position",
-      buffer: lineBuffer,
-      dims: 2,
-    }
-  );
-
-  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-
-  function drawScene() {
-    gl.useProgram(program);
-    gl.bindBuffer(gl.ARRAY_BUFFER, coordBuffer);
-    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(position);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, triangleCoords.length / 2);
-
-    gl.useProgram(lineProgram);
-    gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
-    gl.vertexAttribPointer(linePosition, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(linePosition);
-
-    for (let i = 0; i < lineCoords.length / 8; i++) {
-      gl.drawArrays(gl.TRIANGLE_STRIP, i * 4, 4);
-    }
-  }
-
-  function generateNewHeight(previousHeight) {
-    const change = previousHeight * 0.00000000001;
-    const newHeight = previousHeight + (Math.random() * 2 - 1) * change;
-    return Math.max(0, newHeight); 
-  }
-
-  function updateData() {
-    const lastHeight = heights[heights.length - 1];
-    const newHeight = generateNewHeight(lastHeight);
-    heights.push(newHeight);
-    if (heights.length > 40) {
-      heights.shift();
-    }
-    [triangleCoords, extendedHeights] = generateTriangleCoords(heights);
-    lineCoords = generateLineCoords(extendedHeights, 4 / canvas.height);
-
-    coordBuffer = utils.createAndBindBuffer(
-      gl,
-      gl.ARRAY_BUFFER,
-      gl.STATIC_DRAW,
-      new Float32Array(triangleCoords)
-    );
-    lineBuffer = utils.createAndBindBuffer(
-      gl,
-      gl.ARRAY_BUFFER,
-      gl.STATIC_DRAW,
-      new Float32Array(lineCoords)
-    );
-  }
-
-  function animate() {
-    drawScene();
-    setTimeout(() => {
-      gl.clearColor(0.0, 0.0, 0.0, 1.0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      updateData();
-      requestAnimationFrame(animate);
-    }, 300);
-  }
-
-  animate();
-
-  function generateTriangleCoords(heights, smoothCorners = false) {
-    let extendedHeights = [];
-
-    if (smoothCorners) {
-      for (let i = 0; i < heights.length - 1; i++) {
-        let currentHeight = heights[i];
-        let nextHeight = heights[i + 1];
-        let middleHeight = nextHeight - currentHeight;
-
-        middleHeight =
-          nextHeight > currentHeight
-            ? middleHeight * 0.7
-            : middleHeight - middleHeight * 0.7;
-
-        extendedHeights.push(currentHeight);
-        extendedHeights.push(middleHeight + currentHeight);
-      }
-      extendedHeights.push(heights[heights.length - 1]);
-    } else {
-      extendedHeights = heights;
-    }
-
-    const minHeight = Math.min(...extendedHeights);
-    const maxHeight = Math.max(...extendedHeights);
-    const normalizedHeights = extendedHeights.map(
-      (height) => ((height - minHeight) / (maxHeight - minHeight)) * 2 - 1
+    cryptoPrices = webGLUtils.updateArray(cryptoPrices);
+    drawCryptoLabel("binance/BNBUSDC");
+    drawCryptoPrice(
+      cryptoPrices[cryptoPrices.length - 1],
+      cryptoPrices[cryptoPrices.length - 2]
     );
 
-    const triangleCoords = [];
-    let xCoord = -1.0;
-    const xStep = 2.0 / (normalizedHeights.length - 1);
+    const [triangleVertices, extendedPrices] = webGLUtils.generateTriangleCoords(cryptoPrices);
+    const lineVertices = webGLUtils.generateLineCoords(extendedPrices, 8 / canvas.height);
+    drawGraph(triangleVertices, lineVertices);
 
-    for (let i = 0; i < normalizedHeights.length; i++) {
-      triangleCoords.push(xCoord, -1.0);
-      triangleCoords.push(xCoord, normalizedHeights[i]);
-      xCoord += xStep;
-    }
-
-    return [triangleCoords, extendedHeights];
-  }
-
-  function generateLineCoords(heights, lineWidth) {
-    const lineCoords = [];
-    const xStep = 2.0 / (heights.length - 1);
-    const halfWidth = lineWidth / 2;
-    const minHeight = Math.min(...heights);
-    const maxHeight = Math.max(...heights);
-
-    for (let i = 0; i < heights.length - 1; i++) {
-      const x1 = -1.0 + i * xStep;
-      const y1 = ((heights[i] - minHeight) / (maxHeight - minHeight)) * 2 - 1;
-      const x2 = x1 + xStep;
-      const y2 = ((heights[i + 1] - minHeight) / (maxHeight - minHeight)) * 2 - 1;
-
-      const angle = Math.atan2(y2 - y1, x2 - x1);
-      const sin = Math.sin(angle) * halfWidth;
-      const cos = Math.cos(angle) * halfWidth;
-
-      lineCoords.push(x1 - sin, y1 + cos);
-      lineCoords.push(x1 + sin, y1 - cos);
-      lineCoords.push(x2 - sin, y2 + cos);
-      lineCoords.push(x2 + sin, y2 - cos);
-    }
-
-    return lineCoords;
-  }
+    requestAnimationFrame(animateGraph);
+  }, 300);
 }
 
-const fpsElem = document.querySelector("#fps");
+animateGraph();
 
-let then = 0;
-function render(now) {
+const fpsDisplay = document.querySelector("#fps");
+
+let lastFrameTime = 0;
+function renderFPS(now) {
   now *= 0.001;
-  const deltaTime = now - then;
-  then = now;
+  const deltaTime = now - lastFrameTime;
+  lastFrameTime = now;
   const fps = 1 / deltaTime;
-  fpsElem.textContent = fps.toFixed(1);
-  requestAnimationFrame(render);
+  fpsDisplay.textContent = fps.toFixed(1);
+  requestAnimationFrame(renderFPS);
 }
-requestAnimationFrame(render);
-
-main();
-graph();
+requestAnimationFrame(renderFPS);
