@@ -8,7 +8,7 @@ void main () {
   gl_Position = vec4(vertexPosition, 0.0, 1.0);
 }`;
 
-const fragmentShaderSource = `#version 300 es
+const graphFragmentShaderSource = `#version 300 es
 precision highp float;
 uniform vec2 uCanvasSize;
 out vec4 fragColor;
@@ -24,7 +24,7 @@ void main() {
   fragColor = vec4(0.925, 0.176, 0.361, 1.0);
 }`;
 
-const textVertexShader = `#version 300 es
+const textVertexShaderSource = `#version 300 es
 in vec4 a_position;
 in vec2 a_texcoord;
 uniform mat4 u_matrix;
@@ -34,7 +34,7 @@ void main() {
   v_texcoord = a_texcoord;
 }`;
 
-const textFragmentShader = `#version 300 es
+const textFragmentShaderSource = `#version 300 es
 precision mediump float;
 in vec2 v_texcoord;
 uniform sampler2D u_texture;
@@ -55,7 +55,7 @@ let cryptoPrices = webGLUtils.generateRandomArray(500, 100);
 const priceProgram = webGLUtils.getProgram(
   gl,
   vertexShaderSource,
-  fragmentShaderSource
+  graphFragmentShaderSource
 );
 const lineProgram = webGLUtils.getProgram(
   gl,
@@ -64,8 +64,8 @@ const lineProgram = webGLUtils.getProgram(
 );
 const textProgram = webGLUtils.getProgram(
   gl,
-  textVertexShader,
-  textFragmentShader
+  textVertexShaderSource,
+  textFragmentShaderSource
 );
 
 const uCanvasSizeLocation = gl.getUniformLocation(priceProgram, "uCanvasSize");
