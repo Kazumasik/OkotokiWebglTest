@@ -10,8 +10,5 @@
   },
   "devDependencies": {
     "vite": "^5.2.0"
-  },
-  "dependencies": {
-    "scichart": "^3.4.617"
   }
 }
