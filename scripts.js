@@ -116,24 +116,7 @@ image.src = "font.png";
 image.onload = () => {
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-  gl.clearColor(0, 0, 0, 1);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-
-  cryptoPrices = webGLUtils.updateArray(cryptoPrices);
-  drawCryptoLabel("binance/BNBUSDC");
-  drawCryptoPrice(
-    cryptoPrices[cryptoPrices.length - 1],
-    cryptoPrices[cryptoPrices.length - 2]
-  );
-
-  const [triangleVertices, extendedPrices] =
-    webGLUtils.generateTriangleCoords(cryptoPrices);
-  const lineVertices = webGLUtils.generateLineCoords(
-    extendedPrices,
-    8 / canvas.height
-  );
-  drawGraph(triangleVertices, lineVertices);
+  drawScene();
 };
 
 function drawCryptoLabel(cryptoLabel) {
@@ -224,28 +207,30 @@ function drawGraph(triangleVertices, lineVertices) {
     gl.drawArrays(gl.TRIANGLE_STRIP, i * 4, 4);
   }
 }
+function drawScene() {
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+  cryptoPrices = webGLUtils.updateArray(cryptoPrices);
+  drawCryptoLabel("binance/BNBUSDC");
+  drawCryptoPrice(
+    cryptoPrices[cryptoPrices.length - 1],
+    cryptoPrices[cryptoPrices.length - 2]
+  );
+
+  const [triangleVertices, extendedPrices] =
+    webGLUtils.generateTriangleCoords(cryptoPrices);
+  const lineVertices = webGLUtils.generateLineCoords(
+    extendedPrices,
+    8 / canvas.height
+  );
+  drawGraph(triangleVertices, lineVertices);
+}
 
 function animateGraph() {
   setTimeout(() => {
-    gl.clearColor(0, 0, 0, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-
-    cryptoPrices = webGLUtils.updateArray(cryptoPrices);
-    drawCryptoLabel("binance/BNBUSDC");
-    drawCryptoPrice(
-      cryptoPrices[cryptoPrices.length - 1],
-      cryptoPrices[cryptoPrices.length - 2]
-    );
-
-    const [triangleVertices, extendedPrices] =
-      webGLUtils.generateTriangleCoords(cryptoPrices);
-    const lineVertices = webGLUtils.generateLineCoords(
-      extendedPrices,
-      8 / canvas.height
-    );
-    drawGraph(triangleVertices, lineVertices);
-
+    drawScene();
     requestAnimationFrame(animateGraph);
   }, 300);
 }
